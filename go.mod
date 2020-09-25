@@ -8,5 +8,4 @@ require (
 	github.com/go-redsync/redsync/v4 v4.0.3
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.0
-	github.com/stvp/tempredis v0.0.0-20181119212430-b82af8480203
 )
