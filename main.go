@@ -59,7 +59,7 @@ func handlerWithLowLatency(w http.ResponseWriter, r *http.Request) {
 
 	mx := rs.NewMutex("lock:global",
 		redsync.WithExpiry(time.Second*30),
-		redsync.WithTries(10),
+		redsync.WithTries(5),
 		redsync.WithRetryDelay(time.Second*1),
 	)
 
