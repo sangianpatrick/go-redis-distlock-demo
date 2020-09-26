@@ -19,6 +19,8 @@ import (
 const (
 	acquiredLockMessage    = "Acquired the lock."
 	notAcquiredLockMessage = "Resource is locked. Acquired by another request."
+	statusOK               = "OK"
+	statusLocked           = "LOCKED"
 )
 
 var rs *redsync.Redsync
@@ -26,14 +28,15 @@ var rs *redsync.Redsync
 type result struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
+	Status  string `json:"status"`
 }
 
 func main() {
 	port := os.Getenv("PORT")
+	redisHost := os.Getenv("REDIS_HOST")
 
 	redisClient := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
-		DB:   0,
+		Addr: redisHost,
 	})
 
 	pool := goredis.NewPool(redisClient)
@@ -67,6 +70,7 @@ func handlerWithLowLatency(w http.ResponseWriter, r *http.Request) {
 		res := result{
 			Success: false,
 			Message: notAcquiredLockMessage,
+			Status:  statusLocked,
 		}
 		w.WriteHeader(http.StatusLocked)
 		json.NewEncoder(w).Encode(res)
@@ -78,6 +82,7 @@ func handlerWithLowLatency(w http.ResponseWriter, r *http.Request) {
 	res := result{
 		Success: true,
 		Message: acquiredLockMessage,
+		Status:  statusOK,
 	}
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(res)
@@ -97,6 +102,7 @@ func handlerWithHighLatency(w http.ResponseWriter, r *http.Request) {
 		res := result{
 			Success: false,
 			Message: notAcquiredLockMessage,
+			Status:  statusLocked,
 		}
 		w.WriteHeader(http.StatusLocked)
 		json.NewEncoder(w).Encode(res)
@@ -108,6 +114,7 @@ func handlerWithHighLatency(w http.ResponseWriter, r *http.Request) {
 	res := result{
 		Success: true,
 		Message: acquiredLockMessage,
+		Status:  statusOK,
 	}
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(res)
