@@ -8,7 +8,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-redsync/redsync/v4"
+	"github.com/sangianpatrick/go-redis-distlock-demo/sync"
+
 	"github.com/go-redsync/redsync/v4/redis/goredis/v8"
 
 	"github.com/go-redis/redis/v8"
@@ -23,7 +24,7 @@ const (
 	statusLocked           = "LOCKED"
 )
 
-var rs *redsync.Redsync
+var distlock sync.DistributedLock
 
 type result struct {
 	Success bool   `json:"success"`
@@ -41,7 +42,7 @@ func main() {
 
 	pool := goredis.NewPool(redisClient)
 
-	rs = redsync.New(pool)
+	distlock = sync.NewRedsyncAdapter(pool)
 
 	router := mux.NewRouter()
 
@@ -60,13 +61,11 @@ func handlerHealthCheck(w http.ResponseWriter, r *http.Request) {
 func handlerWithLowLatency(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	mx := rs.NewMutex("lock:global",
-		redsync.WithExpiry(time.Second*30),
-		redsync.WithTries(5),
-		redsync.WithRetryDelay(time.Second*1),
-	)
+	mutex := distlock.NewMutex("lock:global", 5, time.Second*1, time.Second*30)
 
-	if err := mx.LockContext(ctx); err != nil {
+	w.Header().Add("Content-Type", "application/json")
+
+	if err := mutex.Lock(ctx); err != nil {
 		res := result{
 			Success: false,
 			Message: notAcquiredLockMessage,
@@ -76,7 +75,7 @@ func handlerWithLowLatency(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(res)
 		return
 	}
-	defer mx.UnlockContext(ctx)
+	defer mutex.Unlock(ctx)
 
 	time.Sleep(time.Millisecond * 500)
 	res := result{
@@ -92,13 +91,11 @@ func handlerWithLowLatency(w http.ResponseWriter, r *http.Request) {
 func handlerWithHighLatency(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	mx := rs.NewMutex("lock:global",
-		redsync.WithExpiry(time.Second*30),
-		redsync.WithTries(5),
-		redsync.WithRetryDelay(time.Second*1),
-	)
+	mutex := distlock.NewMutex("lock:global", 5, time.Second*1, time.Second*30)
 
-	if err := mx.LockContext(ctx); err != nil {
+	w.Header().Add("Content-Type", "application/json")
+
+	if err := mutex.Lock(ctx); err != nil {
 		res := result{
 			Success: false,
 			Message: notAcquiredLockMessage,
@@ -108,7 +105,7 @@ func handlerWithHighLatency(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(res)
 		return
 	}
-	defer mx.UnlockContext(ctx)
+	defer mutex.Unlock(ctx)
 
 	time.Sleep(time.Second * 20)
 	res := result{
